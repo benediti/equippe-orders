@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  /* Cores principais da Equippe */
+  --primary: #0066FF;        /* Azul principal */
+  --primary-dark: #0052CC;   /* Azul escuro para hover */
+  --primary-light: #4D94FF;  /* Azul claro para backgrounds */
+  --accent: #ab1a1a;         /* Vermelho para destaques */
+  --accent-dark: #8a1515;    /* Vermelho escuro para hover */
+
+  /* Cores neutras (minimalista) */
+  --background: #ffffff;
+  --surface: #f8fafc;        /* Cinza muito claro */
+  --surface-hover: #f1f5f9;
+  --foreground: #0f172a;     /* Texto principal */
+  --foreground-muted: #64748b; /* Texto secundário */
+
+  /* Cores de feedback */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  /* Bordas e sombras */
+  --border: #e2e8f0;
+  --shadow: rgba(0, 0, 0, 0.05);
+}
+
+@theme inline {
+  /* Cores customizadas */
+  --color-primary-*: initial;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #0066FF;
+  --color-primary-600: #0052CC;
+  --color-primary-700: #004199;
+  --color-primary-800: #003166;
+  --color-primary-900: #002033;
+
+  --color-accent-*: initial;
+  --color-accent-50: #fef2f2;
+  --color-accent-100: #fee2e2;
+  --color-accent-200: #fecaca;
+  --color-accent-300: #fca5a5;
+  --color-accent-400: #f87171;
+  --color-accent-500: #ab1a1a;
+  --color-accent-600: #8a1515;
+  --color-accent-700: #7f1d1d;
+  --color-accent-800: #991b1b;
+  --color-accent-900: #7f1d1d;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --font-sans: system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --surface: #1e293b;
+    --surface-hover: #334155;
+    --foreground: #f1f5f9;
+    --foreground-muted: #94a3b8;
+    --border: #334155;
+    --shadow: rgba(0, 0, 0, 0.3);
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Estilo moderno para inputs e botões */
+input, select, textarea {
+  @apply transition-all duration-200;
+}
+
+input:focus, select:focus, textarea:focus {
+  @apply outline-none ring-2 ring-primary-500/50;
+}
+
+button {
+  @apply transition-all duration-200 active:scale-95;
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground-muted);
+}
