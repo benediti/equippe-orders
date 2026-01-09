@@ -5,12 +5,10 @@
 import { revalidatePath } from 'next/cache';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getAuth } from 'firebase-admin/auth';
-import { initAdmin } from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin';
 
 export async function deleteClient(id: string) {
   try {
-    await initAdmin();
     await deleteDoc(doc(db, 'clients', id));
     revalidatePath('/dashboard/admin/clients');
     return { success: true, message: 'Cliente excluído com sucesso!' };
@@ -22,9 +20,8 @@ export async function deleteClient(id: string) {
 
 export async function deleteUser(uid: string) {
   try {
-    await initAdmin();
     // Excluir do Firebase Authentication
-    await getAuth().deleteUser(uid);
+    await adminAuth.deleteUser(uid);
     // Excluir do Firestore
     await deleteDoc(doc(db, 'users', uid));
     revalidatePath('/dashboard/admin/users');
