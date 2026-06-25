@@ -1,11 +1,16 @@
 // src/components/AuthProvider.tsx
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { UserProfile } from '@/lib/types';
 import { useRouter, usePathname } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
+
+interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: string;
+  ativo: boolean;
+}
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -22,60 +27,80 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
+    // Busca sessão inicial
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
 
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-
-            // --- CORREÇÃO DE COMPATIBILIDADE ---
-            // Aqui tratamos os dados antigos (ADMIN maiúsculo, campo 'name')
-            const roleNormalizada = data.role ? data.role.toLowerCase() : 'supervisor';
-            const nomeNormalizado = data.name || data.displayName || firebaseUser.displayName || 'Usuário';
-
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email!,
-              displayName: nomeNormalizado,
-              role: roleNormalizada // Transforma 'ADMIN' em 'admin'
-            });
-          } else {
-            // Usuário não tem documento no Firestore - criar um com role padrão 'supervisor'
-            console.log("Usuário sem documento no Firestore. Criando documento automático...");
-
-            const newUserData = {
-              email: firebaseUser.email!,
-              displayName: firebaseUser.displayName || firebaseUser.email!.split('@')[0],
-              role: 'supervisor' // Role padrão para novos usuários
-            };
-
-            await setDoc(userDocRef, newUserData);
-
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email!,
-              displayName: newUserData.displayName,
-              role: 'supervisor'
-            });
-          }
-        } catch (error) {
-          console.error("Erro ao buscar/criar perfil:", error);
-          setUser(null);
-        }
+      if (session?.user) {
+        await loadProfile(session.user.id, session.user.email!, session.user.user_metadata?.full_name);
       } else {
         setUser(null);
+        setLoading(false);
       }
-      setLoading(false);
+    };
+
+    initAuth();
+
+    // Escuta mudanças de sessão
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        await loadProfile(session.user.id, session.user.email!, session.user.user_metadata?.full_name);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
     });
-    return () => unsubscribe();
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  const loadProfile = async (uid: string, email: string, fullName?: string) => {
+    try {
+      const { data: perfil } = await supabase
+        .from('usuarios_perfis')
+        .select('perfil, nome, ativo')
+        .eq('user_id', uid)
+        .single();
+
+      if (perfil) {
+        // Mapeia perfil do banco para role do app
+        const roleMap: Record<string, string> = {
+          ti: 'admin',
+          admin: 'admin',
+          financeiro: 'approver',
+          compras: 'purchasing',
+          supervisor: 'supervisor',
+          supervisora: 'supervisor',
+        };
+
+        setUser({
+          uid,
+          email,
+          displayName: perfil.nome || fullName || email.split('@')[0],
+          role: roleMap[perfil.perfil] ?? 'supervisor',
+          ativo: perfil.ativo,
+        });
+      } else {
+        // Perfil ainda não criado pelo trigger — aguarda
+        setUser(null);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Redireciona para login se não autenticado
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
+    if (!loading && !user && pathname !== '/login' && pathname !== '/acesso-negado') {
       router.push('/login');
     }
   }, [user, loading, pathname, router]);
